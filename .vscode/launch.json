@@ -1,0 +1,35 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch and Debug Blazor WASM",
+            "type": "coreclr",
+            "request": "launch",
+            "program": "dotnet",
+            "args": ["run"],
+            "cwd": "${workspaceFolder}/ReditChallenge/Server",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
+                "uriFormat": "%s"
+            },
+            "preLaunchTask": "build",
+            "postDebugTask": "clean-ports"
+        },
+        {
+            "name": "Launch and Debug Blazor WASM (HTTP)",
+            "type": "coreclr",
+            "request": "launch",
+            "program": "dotnet",
+            "args": ["run", "--urls", "http://localhost:5108"],
+            "cwd": "${workspaceFolder}/ReditChallenge/Server",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
+                "uriFormat": "http://localhost:5108"
+            },
+            "preLaunchTask": "build",
+            "postDebugTask": "clean-ports"
+        }
+    ]
+}
