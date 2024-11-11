@@ -1,6 +1,0 @@
-{
-    "dataworkspace.excludedProjects": [
-        "ReditChallengeSQL/DatabaseProjectApplicationDB/DatabaseProjectApplicationDB.sqlproj",
-        "ReditChallengeSql/ReditChallengeSql.sqlproj"
-    ]
-}
