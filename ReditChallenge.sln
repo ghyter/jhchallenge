@@ -2,15 +2,15 @@
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.0.0
 MinimumVisualStudioVersion = 16.0.0.0
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReditChallenge.Server", "Server\ReditChallenge.Server.csproj", "{28B16431-A2A6-4FD0-A91C-843F5C220E18}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReditChallenge.Server", "ReditChallenge\Server\ReditChallenge.Server.csproj", "{28B16431-A2A6-4FD0-A91C-843F5C220E18}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReditChallenge.Client", "Client\ReditChallenge.Client.csproj", "{5F657504-4925-438F-99DC-36B8346EBFD5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReditChallenge.Client", "ReditChallenge\Client\ReditChallenge.Client.csproj", "{5F657504-4925-438F-99DC-36B8346EBFD5}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReditChallenge.Shared", "Shared\ReditChallenge.Shared.csproj", "{04A5FC60-40FB-4B47-9E75-2C1AF62E466D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReditChallenge.Shared", "ReditChallenge\Shared\ReditChallenge.Shared.csproj", "{04A5FC60-40FB-4B47-9E75-2C1AF62E466D}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared.Tests", "Shared.Tests", "{8E51BEF0-F8EC-4E54-88C3-4A0CD9E1C91F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReditChallenge.Shared.Tests", "Shared.Tests\ReditChallenge.Shared.Tests\ReditChallenge.Shared.Tests.csproj", "{81850D5C-643A-471E-90B2-06EC56785A36}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReditChallenge.Shared.Tests", "ReditChallenge\Shared.Tests\ReditChallenge.Shared.Tests\ReditChallenge.Shared.Tests.csproj", "{81850D5C-643A-471E-90B2-06EC56785A36}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
