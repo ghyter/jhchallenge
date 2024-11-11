@@ -1,9 +1,21 @@
 ﻿@page "/"
+@inject HttpClient Http
+<PageTitle>Reddit Challenge</PageTitle>
 
-<PageTitle>Index</PageTitle>
+<h1>SubReddit stats</h1>
 
-<h1>Hello, world!</h1>
+<RadzenStack Orientation="Orientation.Vertical">
+	<RadzenDropDown Data="@Subredits" TValue="string" Placeholder="Select a Subredit" Style="width: 300px" />
 
-Welcome to your new app.
 
-<SurveyPrompt Title="How is Blazor working for you?" />
+</RadzenStack>
+
+
+@code{
+
+	IEnumerable<string> Subredits = new List<string> { "r/csharp", "r/programminghumor", "r/technology", "r/science", "r/askreddit" };
+
+
+
+}
+

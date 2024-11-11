@@ -2,18 +2,6 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "build",
-                "${workspaceFolder}/ReditChallenge.sln",
-                "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary"
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
             "label": "clean-ports",
             "command": "bash",
             "args": [
@@ -26,6 +14,19 @@
                 "panel": "shared"
             },
             "problemMatcher": []
+        },
+        {
+            "label": "build",
+            "command": "dotnet",
+            "type": "process",
+            "dependsOn": ["clean-ports"],
+            "args": [
+                "build",
+                "${workspaceFolder}/RedditChallenge/RedditChallenge.sln",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "problemMatcher": "$msCompile"
         }
     ]
 }

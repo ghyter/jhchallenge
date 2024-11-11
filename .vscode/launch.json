@@ -5,31 +5,55 @@
             "name": "Launch and Debug Blazor WASM",
             "type": "coreclr",
             "request": "launch",
-            "program": "dotnet",
-            "args": ["run"],
-            "cwd": "${workspaceFolder}/ReditChallenge/Server",
+            "program": "${workspaceFolder}/RedditChallenge/Server/bin/Debug/net7.0/RedditChallenge.Server.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/RedditChallenge/Server",
             "serverReadyAction": {
                 "action": "openExternally",
                 "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
                 "uriFormat": "%s"
             },
             "preLaunchTask": "build",
-            "postDebugTask": "clean-ports"
+            "postDebugTask": "clean-ports",
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
         },
         {
             "name": "Launch and Debug Blazor WASM (HTTP)",
             "type": "coreclr",
             "request": "launch",
-            "program": "dotnet",
-            "args": ["run", "--urls", "http://localhost:5108"],
-            "cwd": "${workspaceFolder}/ReditChallenge/Server",
+            "program": "${workspaceFolder}/RedditChallenge/Server/bin/Debug/net7.0/RedditChallenge.Server.dll",
+            "args": ["--urls", "http://localhost:5108"],
+            "cwd": "${workspaceFolder}/RedditChallenge/Server",
             "serverReadyAction": {
                 "action": "openExternally",
                 "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
                 "uriFormat": "http://localhost:5108"
             },
             "preLaunchTask": "build",
-            "postDebugTask": "clean-ports"
+            "postDebugTask": "clean-ports",
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        },
+        {
+            "name": "Launch and Debug Blazor WASM (HTTPS)",
+            "type": "coreclr",
+            "request": "launch",
+            "program": "${workspaceFolder}/RedditChallenge/Server/bin/Debug/net7.0/Server.dll",
+            "args": ["--urls", "https://localhost:7247"],
+            "cwd": "${workspaceFolder}/RedditChallenge/Server",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
+                "uriFormat": "https://localhost:7247"
+            },
+            "preLaunchTask": "build",
+            "postDebugTask": "clean-ports",
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
         }
     ]
 }
