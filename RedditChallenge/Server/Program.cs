@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.ResponseCompression;
+using RedditChallenge.Shared.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,7 +8,17 @@ var builder = WebApplication.CreateBuilder(args);
 //builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 
+builder.Services.AddHttpClient("RedditTokenClient",httpclient => {
+   httpclient.BaseAddress = new Uri("https://www.reddit.com/"); 
+   httpclient.DefaultRequestHeaders.UserAgent.ParseAdd("RedditChallenge/1.0 (by /u/Dependent-Bar-8662)");
+});
+
+builder.Services.AddSingleton<IRedditAuthRepository,RedditAuthRepository>();
+builder.Services.AddScoped<ISubredditRepository,SubredditRepository>();
+
 var app = builder.Build();
+
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -28,18 +39,21 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-var api = app.MapGroup("/api");
-api.MapGet("/hello", () => "Hello World!");
+var api = app.MapGroup("/api/v1/");
 
-api.MapGet("/redditconfig", () =>
+api.MapGet("/redditconfig", (IRedditAuthRepository repo) =>
 {    
-    
-    var config = new RedditOATHSettings(Environment.GetEnvironmentVariable("REDDIT_CLIENT_ID")?? string.Empty,
-        Environment.GetEnvironmentVariable("REDDIT_CLIENT_SECRET")?? string.Empty,
-        Environment.GetEnvironmentVariable("REDDIT_REDIRECT_URI") ?? string.Empty,
-        Ulid.NewUlid().ToString()
-    );
-    return config;
+    return repo.GetConfig();
+});
+
+api.MapGet("/reddittoken", async (IRedditAuthRepository repo) =>
+{    
+    return await repo.GetAuthToken();
+});
+
+api.MapGet("/subreddit/{subreddit}", async (ISubredditRepository repo, string subreddit) =>
+{    
+    return await repo.GetSubreddit(subreddit);
 });
 
 
@@ -49,4 +63,3 @@ app.MapFallbackToFile("index.html");
 
 app.Run();
 
-record RedditOATHSettings(string ClientId, string ClientSecret, string RedirectUri, string State);
