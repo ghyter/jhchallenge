@@ -6,14 +6,14 @@ using System;
 namespace RedditChallenge.SharedTest
 {
     [TestClass]
-    public class RedditRateLimiterTests
+    public class ApiRateLimiterTests
     {
-        private RedditRateLimiter _rateLimiter;
+        private ApiRateLimiter _rateLimiter;
 
         [TestInitialize]
         public void SetUp()
         {
-            _rateLimiter = new RedditRateLimiter();
+            _rateLimiter = new ApiRateLimiter();
         }
 
         [TestMethod]
@@ -31,23 +31,30 @@ namespace RedditChallenge.SharedTest
             Assert.AreEqual(30, expectedResetTime, "Reset time should match the updated value.");
         }
 
-        [TestMethod]
-        public void CalculateEvenDelay_ShouldReturnCorrectDelay_WhenRequestsRemain()
+        [DataTestMethod]
+        [DataRow(99, 59)]
+        [DataRow(10, 20)]
+        [DataRow(5, 15)]
+        public void CalculateEvenDelay_ShouldReturnCorrectDelay_WhenRequestsRemain(int remainingRequests, int resetTimeSeconds)
         {
             // Arrange
-            int remainingRequests = 10;
-            int resetTimeSeconds = 20;
             _rateLimiter.UpdateRateLimits(remainingRequests, resetTimeSeconds);
 
             // Act
-            int delay = _rateLimiter.CalculateEvenDelay();
+            float delay = _rateLimiter.CalculateEvenDelay();
+
+
+            var expectedDelay = (int)Math.Floor(((float)resetTimeSeconds / (float)remainingRequests) * 1000) ;
+            Console.WriteLine($"Expected delay: {expectedDelay}");
+            Console.WriteLine($"Delay: {delay}");
 
             // Assert
-            Assert.AreEqual(2000, delay, "Delay should evenly distribute requests."); // 20 seconds / 10 requests = 2000ms
+            Assert.AreEqual(expectedDelay, delay, 
+                $"Delay should evenly distribute requests ({resetTimeSeconds} seconds / {remainingRequests} requests = {(resetTimeSeconds / remainingRequests) * 1000} ms).");
         }
 
         [TestMethod]
-        public void CalculateEvenDelay_ShouldHandleNoRemainingRequestsGracefully()
+        public void CalculateEvenDelay_ShouldReturnFullResetDelay_WhenNoRequestsRemain()
         {
             // Arrange
             _rateLimiter.UpdateRateLimits(0, 30);
@@ -56,21 +63,20 @@ namespace RedditChallenge.SharedTest
             int delay = _rateLimiter.CalculateEvenDelay();
 
             // Assert
-            Assert.AreEqual(30000, delay, "Delay should wait for full reset when no requests remain.");
+            Assert.AreEqual(30000, delay, "Delay should wait for the full reset period (30 seconds = 30000ms).");
         }
 
         [TestMethod]
-        public void CalculateEvenDelay_ShouldHandleNegativeTimeGracefully()
+        public void CalculateEvenDelay_ShouldReturnZero_WhenResetPeriodHasPassed()
         {
-            // Simulate an old update time by subtracting more than the reset time from now
-            _rateLimiter.UpdateRateLimits(10, 1);
-            System.Threading.Thread.Sleep(2000); // Let time pass to simulate elapsed reset period
+            // Arrange
+            _rateLimiter.UpdateRateLimits(5, 0); // 5 requests but reset period has already passed
 
             // Act
             int delay = _rateLimiter.CalculateEvenDelay();
 
             // Assert
-            Assert.AreEqual(0, delay, "Delay should return a 0 if the reset time has passed.");
+            Assert.AreEqual(0, delay, "Delay should be 0 when the reset period has passed.");
         }
 
         [TestMethod]
@@ -85,8 +91,6 @@ namespace RedditChallenge.SharedTest
             DateTime start = DateTime.Now;
             await _rateLimiter.ApplyEvenDelayAsync();
             DateTime end = DateTime.Now;
-
-            Console.WriteLine($"Start: {start}, End: {end}");
 
             // Assert
             Assert.IsTrue((end - start).TotalMilliseconds >= 2000, "Delay should wait at least 2 seconds.");

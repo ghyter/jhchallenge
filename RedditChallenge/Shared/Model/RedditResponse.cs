@@ -2,11 +2,6 @@ using System.Text.Json.Serialization;
 
 namespace RedditChallenge.Shared.Model;
 
-public class RateLimit{
-    public int Used { get; set; }  
-    public decimal Remaining { get; set; }  
-    public int Reset { get; set; }  
-}
 
 
 public class RedditRootResponse<T>
@@ -20,6 +15,14 @@ public class RedditRootResponse<T>
     public RateLimit RateLimit { get; set; } = new RateLimit();
 
 }
+
+
+public class RateLimit{
+    public int Used { get; set; }  
+    public decimal Remaining { get; set; }  
+    public int Reset { get; set; }  
+}
+
 
 public class RedditResponseData<T>
 {
