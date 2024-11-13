@@ -62,7 +62,8 @@ public class RedditAuthRepository: IRedditAuthRepository
     {
         try
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, "api/v1/access_token");
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://www.reddit.com/api/v1/access_token");
+            request.Headers.UserAgent.ParseAdd("RedditChallenge/1.0 (by /u/Dependent-Bar-8662)");
             request.Headers.Authorization = new AuthenticationHeaderValue("Basic",
                 Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_config.ClientId}:{_config.ClientSecret}")));
             request.Content = new FormUrlEncodedContent(new Dictionary<string, string>

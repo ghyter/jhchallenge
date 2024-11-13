@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Reflection.Metadata;
 using System.Text.Json;
 using RedditChallenge.Shared.Model;
 
@@ -27,12 +28,26 @@ public class SubredditRepository:ISubredditRepository
         _authRepository = authRepository;
     }
 
+/// <summary>
+/// Get a subreddit by name
+/// </summary>
+/// <param name="subreddit"></param>
+/// <returns></returns>
+/// <exception cref="Exception"></exception>
     public async Task<RedditRootResponse<SubredditResponse>?> GetSubreddit(string subreddit)
     {
-        var request = new HttpRequestMessage(HttpMethod.Get, "/r/{subreddit}/top.json");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _authRepository.GetAuthToken());
+        var token = await _authRepository.GetAuthToken();
+        var request = new HttpRequestMessage(HttpMethod.Get, $"https://oath.reddit.com/r/{subreddit}/new.json");
+        
+        request.Headers.UserAgent.ParseAdd("RedditChallenge/1.0 (by /u/Dependent-Bar-8662)");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer",token);
 
         var response = await _client.SendAsync(request);
+
+        RateLimit rateLimit = new RateLimit();
+        rateLimit.Used = int.Parse(response.Headers.GetValues("X-Ratelimit-Used").First());
+        rateLimit.Remaining = decimal.Parse(response.Headers.GetValues("X-Ratelimit-Remaining").First());
+        rateLimit.Reset = int.Parse(response.Headers.GetValues("X-Ratelimit-Reset").First());
 
         if (!response.IsSuccessStatusCode)
         {
@@ -41,7 +56,11 @@ public class SubredditRepository:ISubredditRepository
 
         var json = await response.Content.ReadAsStringAsync();
         var subreddits = JsonSerializer.Deserialize<RedditRootResponse<SubredditResponse>>(json);
-
+        if (subreddits != null)
+        {
+            subreddits.RateLimit = rateLimit;
+        }
+        
         return subreddits;
     }
 }
