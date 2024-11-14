@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.ResponseCompression;
 using RedditChallenge.Shared.Repositories;
+using RedditChallenge.Shared.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +16,7 @@ builder.Services.AddHttpClient("RedditTokenClient",httpclient => {
 
 builder.Services.AddSingleton<IRedditAuthRepository,RedditAuthRepository>();
 builder.Services.AddScoped<ISubredditRepository,SubredditRepository>();
+builder.Services.AddSingleton<IApiMonitor,ApiMonitor>();
 
 var app = builder.Build();
 
@@ -53,6 +55,13 @@ api.MapGet("/reddittoken", async (IRedditAuthRepository repo) =>
 
 api.MapGet("/subreddit/{subreddit}", async (ISubredditRepository repo, string subreddit) =>
 {    
+    return await repo.GetSubreddit(subreddit);
+});
+
+api.MapGet("/subreddit/{subreddit}/start", async (IApiMonitor monitor, ISubredditRepository repo, string subreddit) =>
+{    
+    return await monitor.StartMonitor(subreddit);
+
     return await repo.GetSubreddit(subreddit);
 });
 

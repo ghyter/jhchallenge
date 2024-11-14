@@ -5,21 +5,36 @@ using System.Threading;
 using System.Threading.Tasks;
 using RedditChallenge.Shared.Repositories;
 
-
 namespace RedditChallenge.Shared.Services;
 
-public class ApiMonitor : IHostedService
+public interface IApiMonitor
+{
+    void SetActionDelegate(Func<Task<(int remainingRequests, int resetTimeSeconds)>> actionDelegate);
+    Task StartAsync(CancellationToken cancellationToken);
+    Task StopAsync(CancellationToken cancellationToken);
+
+}
+
+
+public class ApiMonitor : IHostedService, IApiMonitor
 {
     private readonly ILogger<ApiMonitor> _logger;
-    private readonly Func<Task<(int remainingRequests, int resetTimeSeconds)>> _actionDelegate;
+    private Func<Task<(int remainingRequests, int resetTimeSeconds)>> _actionDelegate;
+    private readonly IApiRateLimiter _rateLimiter;
     private CancellationTokenSource _cancellationTokenSource;
 
     public ApiMonitor(
         ILogger<ApiMonitor> logger,
-        Func<Task<(int remainingRequests, int resetTimeSeconds)>> actionDelegate)
+        IApiRateLimiter rateLimiter)
     {
         _logger = logger;
-        _actionDelegate = actionDelegate;
+        _rateLimiter = rateLimiter;
+    }
+
+
+    public void SetActionDelegate(Func<Task<(int remainingRequests, int resetTimeSeconds)>> actionDelegate)
+    {
+        _actionDelegate = actionDelegate ?? throw new ArgumentNullException(nameof(actionDelegate));
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -46,25 +61,23 @@ public class ApiMonitor : IHostedService
                 // Call the delegate to perform API actions and fetch rate limiter parameters
                 var (remainingRequests, resetTimeSeconds) = await _actionDelegate();
 
-                // Calculate the delay based on rate limiter parameters
-                int delay = remainingRequests > 0
-                    ? (resetTimeSeconds * 1000) / remainingRequests
-                    : resetTimeSeconds * 1000;
+                // Update the rate limiter with the latest parameters
+                _rateLimiter.UpdateRateLimits(remainingRequests, resetTimeSeconds);
 
-                delay = Math.Max(delay, 1000); // Ensure a minimum delay of 1 second
-
-                // Wait for the calculated delay before the next iteration
-                await Task.Delay(delay, cancellationToken);
+                // Apply the rate limiter delay
+                await _rateLimiter.ApplyEvenDelayAsync();
             }
         }
         catch (TaskCanceledException)
         {
-            _logger.LogInformation("RunLoop canceled.");
+            _logger.LogInformation("RunLoop canceled by TaskCanceledException.");
         }
-        catch (Exception ex)
+        finally
         {
-            _logger.LogError(ex, "Error in RunLoop.");
-            throw;
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogInformation("RunLoop canceled.");
+            }
         }
     }
 }
