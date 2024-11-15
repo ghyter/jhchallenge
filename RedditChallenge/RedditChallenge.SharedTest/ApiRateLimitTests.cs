@@ -8,7 +8,7 @@ namespace RedditChallenge.SharedTest
     [TestClass]
     public class ApiRateLimiterTests
     {
-        private ApiRateLimiter _rateLimiter;
+        private ApiRateLimiter _rateLimiter = new ApiRateLimiter();
 
         [TestInitialize]
         public void SetUp()

@@ -1,83 +1,132 @@
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using RedditChallenge.Shared.Repositories;
 
 namespace RedditChallenge.Shared.Services;
 
 public interface IApiMonitor
 {
-    void SetActionDelegate(Func<Task<(int remainingRequests, int resetTimeSeconds)>> actionDelegate);
-    Task StartAsync(CancellationToken cancellationToken);
-    Task StopAsync(CancellationToken cancellationToken);
-
+    Task StartAsync(Func<Task<(int remainingRequests, int resetTimeSeconds)>> actionDelegate);
+    Task StopAsync();
+    bool Status();
+    DateTime? RunningSince { get; } // Expose start time
 }
 
-
-public class ApiMonitor : IHostedService, IApiMonitor
+public class ApiMonitor : IApiMonitor
 {
     private readonly ILogger<ApiMonitor> _logger;
-    private Func<Task<(int remainingRequests, int resetTimeSeconds)>> _actionDelegate;
     private readonly IApiRateLimiter _rateLimiter;
     private CancellationTokenSource _cancellationTokenSource;
+    private readonly object _lock = new();
+    private DateTime? _runningSince;
+    private bool _isRunning; // Track whether the loop is actively running
 
-    public ApiMonitor(
-        ILogger<ApiMonitor> logger,
-        IApiRateLimiter rateLimiter)
+    public DateTime? RunningSince
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _runningSince;
+            }
+        }
+    }
+
+    public ApiMonitor(ILogger<ApiMonitor> logger, IApiRateLimiter rateLimiter)
     {
         _logger = logger;
         _rateLimiter = rateLimiter;
-    }
-
-
-    public void SetActionDelegate(Func<Task<(int remainingRequests, int resetTimeSeconds)>> actionDelegate)
-    {
-        _actionDelegate = actionDelegate ?? throw new ArgumentNullException(nameof(actionDelegate));
-    }
-
-    public Task StartAsync(CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("ApiMonitor is starting.");
         _cancellationTokenSource = new CancellationTokenSource();
-        Task.Run(() => RunLoop(_cancellationTokenSource.Token));
+        _isRunning = false;
+    }
+
+    public Task StartAsync(Func<Task<(int remainingRequests, int resetTimeSeconds)>> actionDelegate)
+    {
+        if (actionDelegate is null)
+        {
+            throw new ArgumentNullException(nameof(actionDelegate), "Action delegate cannot be null.");
+        }
+
+        _logger.LogInformation("ApiMonitor is starting.");
+
+        lock (_lock)
+        {
+            if (_cancellationTokenSource.IsCancellationRequested)
+            {
+                _cancellationTokenSource.Dispose();
+                _cancellationTokenSource = new CancellationTokenSource();
+            }
+
+            _runningSince = DateTime.UtcNow;
+            _isRunning = true; // Set to true when the loop starts
+        }
+
+        Task.Run(() => RunLoop(actionDelegate, _cancellationTokenSource.Token));
         return Task.CompletedTask;
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
+    public Task StopAsync()
     {
         _logger.LogInformation("ApiMonitor is stopping.");
-        _cancellationTokenSource?.Cancel();
+
+        lock (_lock)
+        {
+            _cancellationTokenSource.Cancel();
+            _isRunning = false; // Set to false when the loop stops
+            _runningSince = null;
+        }
+
         return Task.CompletedTask;
     }
 
-    private async Task RunLoop(CancellationToken cancellationToken)
+    public bool Status()
+    {
+        lock (_lock)
+        {
+            return _isRunning;
+        }
+    }
+
+    private async Task RunLoop(Func<Task<(int remainingRequests, int resetTimeSeconds)>> actionDelegate, CancellationToken cancellationToken)
     {
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                // Call the delegate to perform API actions and fetch rate limiter parameters
-                var (remainingRequests, resetTimeSeconds) = await _actionDelegate();
+                try
+                {
+                    // Perform the delegate action and update rate limiter
+                    var (remainingRequests, resetTimeSeconds) = await actionDelegate();
+                    _rateLimiter.UpdateRateLimits(remainingRequests, resetTimeSeconds);
 
-                // Update the rate limiter with the latest parameters
-                _rateLimiter.UpdateRateLimits(remainingRequests, resetTimeSeconds);
-
-                // Apply the rate limiter delay
-                await _rateLimiter.ApplyEvenDelayAsync();
+                    // Apply delay
+                    await _rateLimiter.ApplyEvenDelayAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "An error occurred in the delegate function. Stopping the loop.");
+                    await StopAsync();
+                    throw;
+                }
             }
         }
         catch (TaskCanceledException)
         {
             _logger.LogInformation("RunLoop canceled by TaskCanceledException.");
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An unexpected error occurred in the RunLoop.");
+        }
         finally
         {
-            if (cancellationToken.IsCancellationRequested)
+            lock (_lock)
             {
-                _logger.LogInformation("RunLoop canceled.");
+                _isRunning = false; // Ensure it's set to false if the loop exits unexpectedly
             }
+
+            _logger.LogInformation("RunLoop exiting.");
         }
     }
 }

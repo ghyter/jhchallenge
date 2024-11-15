@@ -16,6 +16,7 @@ builder.Services.AddHttpClient("RedditTokenClient",httpclient => {
 
 builder.Services.AddSingleton<IRedditAuthRepository,RedditAuthRepository>();
 builder.Services.AddScoped<ISubredditRepository,SubredditRepository>();
+builder.Services.AddSingleton<IApiRateLimiter,ApiRateLimiter>();
 builder.Services.AddSingleton<IApiMonitor,ApiMonitor>();
 
 var app = builder.Build();
@@ -58,12 +59,57 @@ api.MapGet("/subreddit/{subreddit}", async (ISubredditRepository repo, string su
     return await repo.GetSubreddit(subreddit);
 });
 
-api.MapGet("/subreddit/{subreddit}/start", async (IApiMonitor monitor, ISubredditRepository repo, string subreddit) =>
-{    
-    return await monitor.StartMonitor(subreddit);
 
-    return await repo.GetSubreddit(subreddit);
+api.MapGet("/subreddit/{subreddit}/start", async (IApiMonitor monitor, IServiceProvider serviceProvider, string subreddit) =>
+{
+    if (monitor.Status())
+    {
+        return Results.BadRequest("The loop is already running.");
+    }
+
+    await monitor.StartAsync(async () =>
+    {
+        using var scope = serviceProvider.CreateScope();
+        var repo = scope.ServiceProvider.GetRequiredService<ISubredditRepository>();
+
+        var results = await repo.GetSubreddit(subreddit);
+
+        results?.Data?.Children?.ForEach(post =>
+        {
+            Console.WriteLine(post?.Data?.Title);
+        });
+
+        return (
+            (int)Math.Floor(results?.RateLimit.Remaining ?? 0),
+            results?.RateLimit.Reset ?? 0
+        );
+    });
+
+    return Results.Ok("Loop started.");
 });
+
+
+api.MapGet("/subreddit/{subreddit}/status", (IApiMonitor monitor) =>
+{
+    return Results.Json(new
+    {
+        isRunning = monitor.Status(),
+        runningSince = monitor.RunningSince
+    });
+});
+
+
+api.MapPost("/subreddit/{subreddit}/stop", async (IApiMonitor monitor) =>
+{
+    if (!monitor.Status())
+    {
+        return Results.BadRequest("The loop is not running.");
+    }
+
+    await monitor.StopAsync();
+    return Results.Ok("Loop stopped.");
+});
+
 
 
 app.MapRazorPages();

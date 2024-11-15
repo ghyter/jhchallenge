@@ -4,7 +4,7 @@ namespace RedditChallenge.Shared.Model;
 public class SubRedditPost
 {
     [JsonPropertyName("id")]
-    public string Id { get; set; }
+    public string Id { get; set; } = string.Empty;
 
     [JsonPropertyName("title")]
     public string? Title { get; set; }
