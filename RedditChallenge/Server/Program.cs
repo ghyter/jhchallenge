@@ -80,6 +80,7 @@ api.MapGet("/subreddit/{subreddit}/start", async (IApiMonitor monitor, string su
         stats?.UpdateSubredditStats(results!);
 
         return (
+            results?.RateLimit.Used ?? 0,
             (int)Math.Floor(results?.RateLimit.Remaining ?? 0),
             results?.RateLimit.Reset ?? 0
         );

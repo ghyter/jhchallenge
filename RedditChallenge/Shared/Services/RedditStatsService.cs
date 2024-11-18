@@ -39,7 +39,7 @@ public class RedditStatsService : IRedditStatsService
     }
 
     // Method to update subreddit statistics based on the response data
-    public void UpdateSubredditStats(RedditRootResponse<SubredditResponse> response)
+    public void UpdateSubredditStats(RedditRootResponse<SubredditResponse>? response)
     {
         _logger.LogDebug("UpdateSubredditStats method called");
         

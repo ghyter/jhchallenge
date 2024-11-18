@@ -7,8 +7,8 @@ using RedditChallenge.Shared.Repositories;
 using System;
 using System.Collections.Generic;
 
-namespace RedditChallenge.Tests.Services
-{
+namespace RedditChallenge.Tests.Services;
+
     [TestClass]
     public class RedditStatsServiceTests
     {
@@ -54,7 +54,7 @@ namespace RedditChallenge.Tests.Services
         public void UpdateSubredditStats_ShouldNotUpdate_WhenResponseIsNull()
         {
             // Arrange
-            RedditRootResponse<SubredditResponse> response = null;
+            RedditRootResponse<SubredditResponse>? response = null;
 
             // Act
             _service.UpdateSubredditStats(response);
@@ -65,7 +65,7 @@ namespace RedditChallenge.Tests.Services
             _mockLogger.Verify(logger => logger.Log(
                 It.Is<LogLevel>(level => level == LogLevel.Warning),
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Response data is null or missing children")),
+                It.Is<It.IsAnyType>((v, t) => (v.ToString() ?? string.Empty).Contains("Response data is null or missing children")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
         }
@@ -104,4 +104,4 @@ namespace RedditChallenge.Tests.Services
             Assert.IsNull(stats);
         }
     }
-}
+

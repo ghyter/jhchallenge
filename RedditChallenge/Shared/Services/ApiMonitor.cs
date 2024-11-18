@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace RedditChallenge.Shared.Services;
 
-public delegate Task<(int remainingRequests, int resetTimeSeconds)> ApiMonitorDelegate(IServiceProvider serviceProvider);
+public delegate Task<(int calledRequests,int remainingRequests, int resetTimeSeconds)> ApiMonitorDelegate(IServiceProvider serviceProvider);
 
 public interface IApiMonitor
 {
@@ -32,16 +32,15 @@ public class ApiMonitor : IApiMonitor
     private DateTime? _runningSince;
     private int _loopCount = 0;
     private bool _isRunning; // Track whether the loop is actively running
+    private TaskCompletionSource<bool>? _loopStartedTcs;
+    private TaskCompletionSource<bool>? _loopStoppedTcs;
 
-    // Track the monitoring loop task
-    private Task? _loopTask;
+    private Task? _loopTask; // Track the monitoring loop task
 
-    // Events to track loop lifecycle
     public event EventHandler? LoopStarted;
     public event EventHandler? LoopStopped;
     public event EventHandler<(int remainingRequests, int resetTimeSeconds, int loopCount)>? LoopCalled;
 
-    // Property to get the time when the loop started
     public DateTime? RunningSince
     {
         get
@@ -53,7 +52,6 @@ public class ApiMonitor : IApiMonitor
         }
     }
 
-    // Constructor to initialize dependencies
     public ApiMonitor(ILogger<ApiMonitor> logger, IApiRateLimiter rateLimiter, IServiceProvider provider)
     {
         _logger = logger;
@@ -63,8 +61,7 @@ public class ApiMonitor : IApiMonitor
         _serviceProvider = provider;
     }
 
-    // Method to start the monitoring loop
-    public Task StartAsync(ApiMonitorDelegate actionDelegate)
+    public async Task StartAsync(ApiMonitorDelegate actionDelegate)
     {
         if (actionDelegate is null)
         {
@@ -83,30 +80,36 @@ public class ApiMonitor : IApiMonitor
 
             _runningSince = DateTime.UtcNow;
             _loopCount = 0;
-            _isRunning = true; // Set to true when the loop starts
+            _isRunning = true;
+
+            _loopStartedTcs = new TaskCompletionSource<bool>();
         }
 
-        LoopStarted?.Invoke(this, EventArgs.Empty); // Trigger LoopStarted event
+        LoopStarted?.Invoke(this, EventArgs.Empty);
 
-        // Start the loop and track the task
         _loopTask = Task.Factory.StartNew(() =>
             RunLoop(actionDelegate, _cancellationTokenSource.Token),
             _cancellationTokenSource.Token,
             TaskCreationOptions.LongRunning,
             TaskScheduler.Default);
 
-        return Task.CompletedTask;
+        await (_loopStartedTcs?.Task ?? Task.CompletedTask);
     }
 
-    // Method to stop the monitoring loop
-    public Task StopAsync()
+    public async Task StopAsync()
     {
         _logger.LogInformation("ApiMonitor is stopping.");
-        _cancellationTokenSource.Cancel(); // Signal cancellation to the loop
-        return Task.CompletedTask;
+
+        lock (_lock)
+        {
+            _loopStoppedTcs = new TaskCompletionSource<bool>();
+        }
+
+        _cancellationTokenSource.Cancel();
+
+        await (_loopStoppedTcs?.Task ?? Task.CompletedTask);
     }
 
-    // Method to get the current status of the monitoring loop
     public LoopStats Status()
     {
         lock (_lock)
@@ -115,34 +118,30 @@ public class ApiMonitor : IApiMonitor
         }
     }
 
-    // Private method to run the monitoring loop
     private async Task RunLoop(ApiMonitorDelegate actionDelegate, CancellationToken cancellationToken)
     {
         try
         {
+            _loopStartedTcs?.TrySetResult(true); // Signal that the loop has started
+
             while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
-                    _loopCount++; // Increment loop count for each iteration
+                    _loopCount++;
                     _logger.LogDebug("Loop iteration {loopCount}", _loopCount);
 
-                    // Perform the delegate action and update rate limiter
-                    var (remainingRequests, resetTimeSeconds) = await actionDelegate(_serviceProvider);
+                    var (calledRequests,remainingRequests, resetTimeSeconds) = await actionDelegate(_serviceProvider);
                     _rateLimiter.UpdateRateLimits(remainingRequests, resetTimeSeconds);
 
-                    // Trigger event after each delegate call
                     LoopCalled?.Invoke(this, (remainingRequests, resetTimeSeconds, _loopCount));
 
-                    _logger.LogDebug($"Remaining Requests: {remainingRequests}, Reset Time (seconds): {resetTimeSeconds}");
-
-                    // Apply delay based on rate limits
                     await _rateLimiter.ApplyEvenDelayAsync(cancellationToken);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "An error occurred in the delegate function. Stopping the loop.");
-                    _cancellationTokenSource.Cancel(); // Stop the loop if an error occurs
+                    _cancellationTokenSource.Cancel();
                     throw;
                 }
             }
@@ -159,12 +158,14 @@ public class ApiMonitor : IApiMonitor
         {
             lock (_lock)
             {
-                _isRunning = false; // Ensure it's set to false if the loop exits
+                _isRunning = false;
                 _runningSince = null;
             }
 
+            _loopStoppedTcs?.TrySetResult(true); // Signal that the loop has stopped
+
             _logger.LogInformation("RunLoop exiting.");
-            LoopStopped?.Invoke(this, EventArgs.Empty); // Trigger LoopStopped event after the loop exits
+            LoopStopped?.Invoke(this, EventArgs.Empty);
         }
     }
 }
