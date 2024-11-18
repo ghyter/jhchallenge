@@ -11,25 +11,30 @@ namespace RedditChallenge.SharedTest
     [TestClass]
     public class ApiMonitorTests
     {
-        private Mock<ILogger<ApiMonitor>>? _mockLogger;
-        private Mock<IApiRateLimiter>? _mockRateLimiter;
-        private Func<Task<(int remainingRequests, int resetTimeSeconds)>>? _mockActionDelegate;
-        private ApiMonitor? _apiMonitor;
+        private Mock<ILogger<ApiMonitor>> _mockLogger = null!;
+        private Mock<IApiRateLimiter> _mockRateLimiter = null!;
+        private ApiMonitorDelegate _mockActionDelegate = null!;
+        private ApiMonitor _apiMonitor = null!;
+        private Mock<IServiceProvider> _mockServiceProvider = null!;
 
         [TestInitialize]
         public void SetUp()
         {
             _mockLogger = new Mock<ILogger<ApiMonitor>>();
             _mockRateLimiter = new Mock<IApiRateLimiter>();
+            _mockServiceProvider = new Mock<IServiceProvider>();
+
+            // Mock action delegate that accepts IServiceProvider
             _mockActionDelegate = MockActionDelegate;
 
             _apiMonitor = new ApiMonitor(
                 _mockLogger.Object,
-                _mockRateLimiter.Object
+                _mockRateLimiter.Object,
+                _mockServiceProvider.Object
             );
         }
 
-        private async Task<(int remainingRequests, int resetTimeSeconds)> MockActionDelegate()
+        private async Task<(int remainingRequests, int resetTimeSeconds)> MockActionDelegate(IServiceProvider serviceProvider)
         {
             await Task.Delay(10); // Simulate async work
             return (10, 60); // Example rate limit values
@@ -39,20 +44,23 @@ namespace RedditChallenge.SharedTest
         public async Task StartAsync_ShouldStartLoopWithoutErrors()
         {
             // Arrange
+            var loopStartedTriggered = new ManualResetEventSlim(false);
+            _apiMonitor.LoopStarted += (sender, args) => loopStartedTriggered.Set();
 
             // Act
-            await _apiMonitor!.StartAsync(_mockActionDelegate!);
-            await Task.Delay(100); // Give the loop time to execute
+            await _apiMonitor.StartAsync(_mockActionDelegate);
+            loopStartedTriggered.Wait(1000); // Wait for the event to be triggered
             await _apiMonitor.StopAsync();
 
             // Assert
-            _mockLogger!.Verify(
+            Assert.IsTrue(loopStartedTriggered.IsSet, "LoopStarted event was not triggered.");
+            _mockLogger.Verify(
                 logger => logger.Log(
                     LogLevel.Information,
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("ApiMonitor is starting.")),
                     null,
-                    It.IsAny<Func<It.IsAnyType, Exception, string>>()
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()
                 ),
                 Times.Once
             );
@@ -63,7 +71,7 @@ namespace RedditChallenge.SharedTest
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("ApiMonitor is stopping.")),
                     null,
-                    It.IsAny<Func<It.IsAnyType, Exception, string>>()
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()
                 ),
                 Times.Once
             );
@@ -73,14 +81,17 @@ namespace RedditChallenge.SharedTest
         public async Task RunLoop_ShouldCallActionDelegateAndRateLimiterMethods()
         {
             // Arrange
-            _mockRateLimiter!.Setup(x => x.ApplyEvenDelayAsync()).Returns(Task.CompletedTask);
+            _mockRateLimiter.Setup(x => x.ApplyEvenDelayAsync()).Returns(Task.CompletedTask);
+            var loopCalledTriggered = new ManualResetEventSlim(false);
+            _apiMonitor.LoopCalled += (sender, args) => loopCalledTriggered.Set();
 
             // Act
-            await _apiMonitor!.StartAsync(_mockActionDelegate!);
-            await Task.Delay(100); // Allow the loop to execute
+            await _apiMonitor.StartAsync(_mockActionDelegate);
+            loopCalledTriggered.Wait(1000); // Wait for the event to be triggered
             await _apiMonitor.StopAsync();
 
             // Assert
+            Assert.IsTrue(loopCalledTriggered.IsSet, "LoopCalled event was not triggered.");
             _mockRateLimiter.Verify(x => x.UpdateRateLimits(10, 60), Times.AtLeastOnce);
             _mockRateLimiter.Verify(x => x.ApplyEvenDelayAsync(), Times.AtLeastOnce);
         }
@@ -89,17 +100,20 @@ namespace RedditChallenge.SharedTest
         public async Task StopAsync_ShouldCancelLoop()
         {
             // Arrange
-            _mockRateLimiter!.Setup(x => x.ApplyEvenDelayAsync()).Returns(Task.CompletedTask);
+            _mockRateLimiter.Setup(x => x.ApplyEvenDelayAsync()).Returns(Task.CompletedTask);
+            var loopStoppedTriggered = new ManualResetEventSlim(false);
+            _apiMonitor.LoopStopped += (sender, args) => loopStoppedTriggered.Set();
 
-            _mockActionDelegate = async () =>
+            _mockActionDelegate = async (serviceProvider) =>
             {
                 await Task.Delay(10); // Simulate API call delay
                 return (10, 60);
             };
 
             _apiMonitor = new ApiMonitor(
-                _mockLogger!.Object,
-                _mockRateLimiter.Object
+                _mockLogger.Object,
+                _mockRateLimiter.Object,
+                _mockServiceProvider.Object
             );
 
             // Act
@@ -108,11 +122,13 @@ namespace RedditChallenge.SharedTest
 
             // Trigger cancellation
             await _apiMonitor.StopAsync();
+            loopStoppedTriggered.Wait(5000); // Wait for the event to be triggered
 
             // Allow time for the cancellation to process and logs to be written
             await Task.Delay(50);
 
             // Assert
+            Assert.IsTrue(loopStoppedTriggered.IsSet, "LoopStopped event was not triggered.");
             _mockLogger.Verify(
                 logger => logger.Log(
                     LogLevel.Information,
@@ -130,7 +146,7 @@ namespace RedditChallenge.SharedTest
         {
             // Act
             var beforeStartTime = DateTime.UtcNow;
-            await _apiMonitor!.StartAsync(_mockActionDelegate!);
+            await _apiMonitor.StartAsync(_mockActionDelegate);
             var runningSince = _apiMonitor.RunningSince;
 
             // Assert
@@ -147,17 +163,17 @@ namespace RedditChallenge.SharedTest
             // Act & Assert
 
             // Initially, the monitor should not be running
-            Assert.IsFalse(_apiMonitor!.Status());
+            Assert.IsFalse(_apiMonitor.Status().IsRunning);
             Assert.IsNull(_apiMonitor.RunningSince);
 
             // Start the monitor
-            await _apiMonitor.StartAsync(_mockActionDelegate!);
-            Assert.IsTrue(_apiMonitor.Status());
+            await _apiMonitor.StartAsync(_mockActionDelegate);
+            Assert.IsTrue(_apiMonitor.Status().IsRunning);
             Assert.IsNotNull(_apiMonitor.RunningSince);
 
             // Stop the monitor
             await _apiMonitor.StopAsync();
-            Assert.IsFalse(_apiMonitor.Status());
+            Assert.IsFalse(_apiMonitor.Status().IsRunning);
             Assert.IsNull(_apiMonitor.RunningSince);
         }
     }

@@ -15,6 +15,7 @@ builder.Services.AddHttpClient("RedditTokenClient",httpclient => {
 });
 
 builder.Services.AddSingleton<IRedditAuthRepository,RedditAuthRepository>();
+builder.Services.AddSingleton<IRedditStatsService,RedditStatsService>();
 builder.Services.AddScoped<ISubredditRepository,SubredditRepository>();
 builder.Services.AddSingleton<IApiRateLimiter,ApiRateLimiter>();
 builder.Services.AddSingleton<IApiMonitor,ApiMonitor>();
@@ -60,24 +61,23 @@ api.MapGet("/subreddit/{subreddit}", async (ISubredditRepository repo, string su
 });
 
 
-api.MapGet("/subreddit/{subreddit}/start", async (IApiMonitor monitor, IServiceProvider serviceProvider, string subreddit) =>
+api.MapGet("/subreddit/{subreddit}/start", async (IApiMonitor monitor, string subreddit) =>
 {
-    if (monitor.Status())
+    if (monitor.Status().IsRunning)
     {
         return Results.BadRequest("The loop is already running.");
     }
 
-    await monitor.StartAsync(async () =>
+    await monitor.StartAsync(async (sp) =>
     {
-        using var scope = serviceProvider.CreateScope();
+        var scope = sp.CreateScope();
+        
         var repo = scope.ServiceProvider.GetRequiredService<ISubredditRepository>();
-
+        var stats = sp.GetService<IRedditStatsService>();
+        
         var results = await repo.GetSubreddit(subreddit);
-
-        results?.Data?.Children?.ForEach(post =>
-        {
-            Console.WriteLine(post?.Data?.Title);
-        });
+        
+        stats?.UpdateSubredditStats(results!);
 
         return (
             (int)Math.Floor(results?.RateLimit.Remaining ?? 0),
@@ -91,17 +91,13 @@ api.MapGet("/subreddit/{subreddit}/start", async (IApiMonitor monitor, IServiceP
 
 api.MapGet("/subreddit/{subreddit}/status", (IApiMonitor monitor) =>
 {
-    return Results.Json(new
-    {
-        isRunning = monitor.Status(),
-        runningSince = monitor.RunningSince
-    });
+    return monitor.Status();
 });
 
 
-api.MapPost("/subreddit/{subreddit}/stop", async (IApiMonitor monitor) =>
+api.MapGet("/subreddit/{subreddit}/stop", async (IApiMonitor monitor) =>
 {
-    if (!monitor.Status())
+    if (!monitor.Status().IsRunning)
     {
         return Results.BadRequest("The loop is not running.");
     }

@@ -5,7 +5,7 @@
 <h1>SubReddit stats</h1>
 
 <RadzenStack Orientation="Orientation.Vertical">
-	<RadzenDropDown Data="@Subredits" TValue="string" Placeholder="Select a Subredit" Style="width: 300px" />
+	<RadzenDropDown Data="@Subreddits" TValue="string" Placeholder="Select a Subreddit" Style="width: 300px" />
 
 
 </RadzenStack>
@@ -13,7 +13,7 @@
 
 @code{
 
-	IEnumerable<string> Subredits = new List<string> { "r/csharp", "r/programminghumor", "r/technology", "r/science", "r/askreddit" };
+	IEnumerable<string> Subreddits = new List<string> { "r/csharp", "r/programminghumor", "r/technology", "r/science", "r/askreddit" };
 
 
 

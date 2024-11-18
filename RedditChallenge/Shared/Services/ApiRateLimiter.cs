@@ -8,7 +8,7 @@ public interface IApiRateLimiter
 {
     public void UpdateRateLimits(int remainingRequests, int resetTimeSeconds);
     public int CalculateEvenDelay();
-    public Task ApplyEvenDelayAsync();
+    public Task ApplyEvenDelayAsync(CancellationToken cancellationToken);
 }
 
 public class ApiRateLimiter:IApiRateLimiter
@@ -63,10 +63,10 @@ public class ApiRateLimiter:IApiRateLimiter
     /// <summary>
     /// Applies an even delay before the next request.
     /// </summary>
-    public async Task ApplyEvenDelayAsync()
+    public async Task ApplyEvenDelayAsync(CancellationToken cancellationToken)
     {
         int delay = CalculateEvenDelay();
         Console.WriteLine($"Delaying next request by {delay}ms...");
-        await Task.Delay(delay);
+        await Task.Delay(delay,cancellationToken);
     }
 }
