@@ -1,49 +1,41 @@
 ﻿@using System.ComponentModel.DataAnnotations;
+
+<!-- The 'span' element is used to display the formatted time. Any additional HTML attributes passed to this component are applied using the @AdditionalAttributes dictionary. -->
 <span @attributes="@AdditionalAttributes">@FormatTime()</span>
 
 @code {
+    // Parameter to capture any additional attributes for the 'span' element.
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
+    // Parameter to receive a TimeSpan value from the parent component.
     [Parameter]
-    public int? TimeInMilliseconds { get; set; }
+    public TimeSpan? Time { get; set; }
 
-    [Parameter]
-    public int? TimeInSeconds { get; set; }
-
+    // Method to format the TimeSpan into a user-friendly string.
     private string FormatTime()
     {
-        if (TimeInMilliseconds != null)
+        if (Time != null)
         {
-            double timeInSeconds = TimeInMilliseconds.Value / 1000.0;
+            // Extract minutes, seconds, and milliseconds from the TimeSpan.
+            int minutes = Time.Value.Minutes; // Number of minutes in the TimeSpan.
+            int seconds = Time.Value.Seconds; // Number of seconds in the TimeSpan.
+            int milliseconds = Time.Value.Milliseconds; // Number of milliseconds in the TimeSpan.
 
-            // Format for milliseconds to seconds
-            if (TimeInMilliseconds > 500 && TimeInMilliseconds < 1000)
-                return $"{timeInSeconds:F2} seconds";
-            if (TimeInMilliseconds >= 1000 && TimeInMilliseconds < 60000)
-                return $"{timeInSeconds:F2} seconds";
-
-            // Format for milliseconds to minutes
-            if (TimeInMilliseconds >= 60000)
+            // Format the string depending on whether there are minutes present.
+            if (minutes > 0)
             {
-                double timeInMinutes = TimeInMilliseconds.Value / 60000.0;
-                return $"{timeInMinutes:F2} minutes";
+                // If there are minutes, format as mm:ss.milliseconds.
+                return $"{minutes:D2}:{seconds:D2}.{milliseconds:D3}";
             }
-
-            return $"{TimeInMilliseconds} ms";
+            else
+            {
+                // If there are no minutes, format as ss.milliseconds.
+                return $"{seconds:D2}.{milliseconds:D3}";
+            }
         }
 
-        if (TimeInSeconds != null)
-        {
-            // Format for seconds to minutes
-            if (TimeInSeconds > 30 && TimeInSeconds < 60)
-                return $"{TimeInSeconds / 60.0:F2} minutes";
-            if (TimeInSeconds >= 60 && TimeInSeconds < 3600)
-                return $"{TimeInSeconds / 60.0:F2} minutes";
-
-            return $"{TimeInSeconds} seconds";
-        }
-
+        // Return a default message if the Time parameter is null.
         return "Invalid selection";
     }
 }

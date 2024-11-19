@@ -1,7 +1,9 @@
 ﻿@using System.ComponentModel.DataAnnotations
 @using RedditChallenge.Shared.Model
 
+
 @if (Message != null){
+    <RadzenCard>
     <RadzenArcGauge Style="width: 100%; height: 250px;">
         <RadzenArcGaugeScale Step="10" Min="0" Max="@(Message.Used + Message.Remaining)" MinorStep="2" Radius="1.5" TickPosition="GaugeTickPosition.Outside" Y="0.9" Margin="0">
             <RadzenArcGaugeScaleValue Value=@Message.Used ShowValue=true>
@@ -10,12 +12,12 @@
                         <RadzenText TextStyle="TextStyle.H5" class="rz-m-0"><strong>@Message.Used/@Message.Remaining Messages</strong></RadzenText>
                         <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0">
                         <strong>
-                            <PrettyTime TimeInSeconds="@Message.Reset"/> to reset
+                            <PrettyTime Time="@TimeSpan.FromSeconds(Message.Reset)"/> to reset
                         </strong>
                         </RadzenText>
                         <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0">
                         <strong>
-                            <PrettyTime TimeInMilliseconds="@Message.Delay"/> delay between calls
+                            <PrettyTime Time="@Message.Delay"/> delay between calls
                         </strong>
                         </RadzenText>
                     </RadzenStack>
@@ -23,6 +25,7 @@
             </RadzenArcGaugeScaleValue>
         </RadzenArcGaugeScale>
     </RadzenArcGauge>
+    </RadzenCard>
 }
 @code {
     [Parameter]

@@ -2,11 +2,25 @@ using Microsoft.AspNetCore.ResponseCompression;
 using RedditChallenge.Shared.Repositories;
 using RedditChallenge.Shared.Services;
 using RedditChallenge.Server.Hubs;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
+// Configure Serilog for file logging
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console() // Optional: Log to console
+    .WriteTo.File("Logs/app-log-.txt",
+        rollingInterval: RollingInterval.Day,
+        fileSizeLimitBytes: 10 * 1024 * 1024, // 10 MB
+        rollOnFileSizeLimit: true,
+        retainedFileCountLimit: 5, // Keep up to 5 log files
+        shared: true)
+    .CreateLogger();
+
+builder.Logging.ClearProviders(); // Remove default logging providers
+builder.Host.UseSerilog(); 
 
 builder.Services.AddSignalR();
 

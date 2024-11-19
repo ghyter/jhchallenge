@@ -85,7 +85,7 @@ public class ApiMonitorTests
     // Ensure the task completed successfully
     Assert.IsTrue(loopCalledTaskSource.Task.IsCompletedSuccessfully, "LoopCalled event did not complete successfully.");
 
-    _mockRateLimiter.Verify(x => x.UpdateRateLimits(10, 60), Times.AtLeastOnce);
+    _mockRateLimiter.Verify(x => x.UpdateRateLimits(50, 10, 60,TimeSpan.FromMilliseconds(150)), Times.AtLeastOnce);
     _mockRateLimiter.Verify(x => x.ApplyEvenDelayAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
 }
 

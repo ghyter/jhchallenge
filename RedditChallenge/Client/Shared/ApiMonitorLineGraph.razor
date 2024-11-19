@@ -1,0 +1,50 @@
+﻿@using RedditChallenge.Shared.Model;
+<RadzenCard>
+    <RadzenStack>
+        @if (Data != null){
+
+        <RadzenChart Style="height: 250px; width: 100%;">
+            <RadzenCategoryAxis FormatString="{0:HH:mm:ss}"/>
+            <RadzenValueAxis Max="625">
+                <RadzenGridLines Visible="true"/>
+            </RadzenValueAxis>
+
+            <!-- Remaining Series -->
+            <RadzenLineSeries Data="@Data" Title="Remaining"
+                            ValueProperty="Remaining" CategoryProperty="MessageDate" >
+                <RadzenMarkers Visible="true" MarkerType="MarkerType.Diamond"/>
+                
+            </RadzenLineSeries>
+
+            <!-- Reset Series -->
+            <RadzenLineSeries Data="@Data" Title="Reset"
+                            ValueProperty="Reset" CategoryProperty="MessageDate">
+                <RadzenMarkers Visible="true" MarkerType="MarkerType.Triangle"/>
+            </RadzenLineSeries>
+
+            <!-- Used Series -->
+            <RadzenLineSeries Data="@Data" Title="Used"
+                            ValueProperty="Used" CategoryProperty="MessageDate">
+                    <RadzenMarkers Visible="true" MarkerType="MarkerType.Circle"/>
+            </RadzenLineSeries>
+        </RadzenChart>
+
+        }
+        else {
+            <div>Awaiting Data</div>
+        }
+    </RadzenStack>
+</RadzenCard>
+
+
+@code {
+    [Parameter] 
+    public List<MonitorStatsMessage>? Data {get;set;}
+
+    [Parameter]
+    public string Title {get;set;} = "Monitor Stats";
+
+
+
+
+}

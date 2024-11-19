@@ -25,7 +25,7 @@ public class SubredditHub : Hub
             await PushMonitorEvent(new MonitorEventMessage("[STOP] Monitor stopped", DateTime.UtcNow));
 
         _apiMonitor.LoopCalled += async (sender, args) =>{
-            await PushStats(new MonitorStatsMessage(true, _apiMonitor.RunningSince, args.loopCount,args.remainingRequests, args.resetTimeSeconds,args.usedRequests, args.Delay));
+            await PushStats(new MonitorStatsMessage(true, _apiMonitor.RunningSince, args.loopCount,args.remainingRequests, args.resetTimeSeconds,args.usedRequests, args.Delay, args.Duration,args.MessageDate));
             };
 
         // Subscribe to RedditStatsService events

@@ -17,7 +17,7 @@ public interface IApiMonitor
 
     event EventHandler? LoopStarted; // Event triggered when the loop starts
     event EventHandler? LoopStopped; // Event triggered when the loop stops
-    event EventHandler<(int remainingRequests, int resetTimeSeconds, int loopCount,int usedRequests, int Delay)>? LoopCalled; // Event triggered when the loop calls the action delegate
+    event EventHandler<(TimeSpan Duration, int remainingRequests, int resetTimeSeconds, int loopCount,int usedRequests, TimeSpan Delay,DateTime MessageDate)>? LoopCalled; // Event triggered when the loop calls the action delegate
 }
 
 public record LoopStats(bool IsRunning, DateTime? RunningSince, int LoopCount = 0, int Remaining = 0, int Reset = 0, int Delay = 0);
@@ -39,7 +39,8 @@ public class ApiMonitor : IApiMonitor
 
     public event EventHandler? LoopStarted;
     public event EventHandler? LoopStopped;
-    public event EventHandler<(int remainingRequests, int resetTimeSeconds, int loopCount,int usedRequests, int Delay)>? LoopCalled;
+    public event EventHandler<(TimeSpan Duration,int remainingRequests, int resetTimeSeconds, int loopCount,int usedRequests, TimeSpan Delay, DateTime MessageDate)>? LoopCalled;
+    
 
     public DateTime? RunningSince
     {
@@ -132,10 +133,17 @@ public class ApiMonitor : IApiMonitor
                     
                     _logger.LogDebug("Loop iteration {loopCount}", _loopCount);
 
-                    var (calledRequests,remainingRequests, resetTimeSeconds) = await actionDelegate(_serviceProvider);
-                    _rateLimiter.UpdateRateLimits(remainingRequests, resetTimeSeconds);
+                    // Start tracking time
+                    var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-                    LoopCalled?.Invoke(this, (remainingRequests, resetTimeSeconds, _loopCount, calledRequests, _rateLimiter.CalculateEvenDelay()));
+                    var (calledRequests,remainingRequests, resetTimeSeconds) = await actionDelegate(_serviceProvider);
+                    // Stop tracking time
+                    stopwatch.Stop();
+                    TimeSpan duration = TimeSpan.FromMilliseconds(stopwatch.ElapsedMilliseconds);
+
+                    _rateLimiter.UpdateRateLimits(calledRequests,remainingRequests, resetTimeSeconds,duration);
+
+                    LoopCalled?.Invoke(this, (duration,remainingRequests, resetTimeSeconds, _loopCount, calledRequests, _rateLimiter.CalculateEvenDelay(),DateTime.Now));
 
                     await _rateLimiter.ApplyEvenDelayAsync(cancellationToken);
                 }

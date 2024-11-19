@@ -12,12 +12,18 @@
 <RadzenRow>
     <RadzenColumn>
         <RadzenStack Orientation="Orientation.Horizontal" Gap="3">
-            <RadzenDropDown @bind-Value="selectedSubreddit" Data="@Subreddits" Disabled="@(monitorStatus == "Running")" TValue="string" Placeholder="Select a Subreddit" Style="width: 300px" />
-                <RadzenButton Click="StartMonitor" Disabled="@(selectedSubreddit==null || monitorStatus == "Running")">Start Monitor</RadzenButton>
-                <RadzenButton Click="StopMonitor" Disabled="@(monitorStatus != "Running")">Stop Monitor</RadzenButton>
+            <RadzenDropDown @bind-Value="_selectedSubreddit" Data="@Subreddits" Disabled="@(_monitorStatus == "Running")" TValue="string" Placeholder="Select a Subreddit" Style="width: 300px" />
+                <RadzenButton Click="StartMonitor" Disabled="@(_selectedSubreddit==null || _monitorStatus == "Running")">Start Monitor</RadzenButton>
+                <RadzenButton Click="StopMonitor" Disabled="@(_monitorStatus != "Running")">Stop Monitor</RadzenButton>
         </RadzenStack>
     </RadzenColumn>
-    
+    <RadzenColumn>
+         <div>
+            <p>Status: @_monitorStatus</p>
+            <p>Last Event: @_lastEvent</p>
+        </div>
+    </RadzenColumn>
+  
 </RadzenRow>
 <RadzenRow>
 @if (redditStatistics != null){
@@ -46,81 +52,78 @@
     </RadzenColumn>
 }
 </RadzenRow>
+
+@if (_monitorHistory.Count > 0){
+<RadzenText TextStyle="TextStyle.H6">Monitor Stats</RadzenText>
 <RadzenRow>
     <RadzenColumn>
-        @if (monitorMessage != null){
-            <ApiMonitorGauge Message="@monitorMessage"/>
-        }
-        <div>
-            <p>Status: @monitorStatus</p>
-            <p>Last Event: @lastEvent</p>
-        </div>
+        <ApiMonitorLineGraph Data="@_monitorHistory"/>
+    </RadzenColumn>
+    <RadzenColumn>
+       <ApiMonitorGauge Message="@_monitorHistory.Last()"/>
     </RadzenColumn>
 </RadzenRow>
+}
 
 
 @code {
 
 	IEnumerable<string> Subreddits = new List<string> { "csharp", "programminghumor", "technology", "science", "askreddit","memes" };
 
-	private string? selectedSubreddit;
-    private HubConnection? hubConnection;
-    private string monitorStatus = "Stopped";
-    private int loopCount = 0;
-    private string lastEvent = "";
-
-    private int remainingRequests = 0;
-    private int resetInSeconds = 0;
+	private string? _selectedSubreddit;
+    private HubConnection? _hubConnection;
+    private string _monitorStatus = "Stopped";
+    private string _lastEvent = "";
 
     private RedditStatistics? redditStatistics;
 
-    private MonitorStatsMessage? monitorMessage;
+    private List<MonitorStatsMessage> _monitorHistory = new();
 
     protected override async Task OnInitializedAsync()
     {
-        hubConnection = new HubConnectionBuilder()
+        _hubConnection = new HubConnectionBuilder()
             .WithUrl(Navigation.ToAbsoluteUri("/subreddithub"))
             .WithAutomaticReconnect(new[] { TimeSpan.Zero, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30) })
             .Build();
 
-        hubConnection.On<MonitorStatsMessage>("ReceiveMonitorStats", (stats) =>
+        _hubConnection.On<MonitorStatsMessage>("ReceiveMonitorStats", (stats) =>
         {
-            monitorMessage = stats;
-            monitorStatus = stats.IsRunning ? "Running" : "Stopped";
-            loopCount = stats.LoopCount;
-            remainingRequests = stats.Remaining;
-            resetInSeconds = stats.Reset;
-           
+            _monitorHistory.Add(stats);
+            if (_monitorHistory.Count > 100) _monitorHistory.RemoveAt(0);
+
+            _monitorStatus = stats.IsRunning ? "Running" : "Stopped";
             StateHasChanged();
         });
 
-        hubConnection.On<MonitorSubredditStatsMessage>("ReceiveSubredditStats", (eventMessage) =>
+        _hubConnection.On<MonitorSubredditStatsMessage>("ReceiveSubredditStats", (eventMessage) =>
         {   
             redditStatistics = eventMessage.stats;
             StateHasChanged();
         });
-        hubConnection.On<MonitorEventMessage>("ReceiveMonitorEvent", (eventMessage) =>
+        _hubConnection.On<MonitorEventMessage>("ReceiveMonitorEvent", (eventMessage) =>
         {
-            lastEvent = $"{eventMessage.Timestamp}: {eventMessage.Message}";
+            _lastEvent = $"{eventMessage.Timestamp}: {eventMessage.Message}";
             if (eventMessage.Message.Contains("[STOP]")){
-                monitorStatus = "Stopped";
+                _monitorStatus = "Stopped";
             }
             StateHasChanged();
         });
 
-        await hubConnection.StartAsync();
+        await _hubConnection.StartAsync();
     }
 
     private async Task StartMonitor()
     {
-        if (hubConnection is null){return;}
-        await hubConnection.InvokeAsync("StartSubredditLoop", selectedSubreddit);
+        if (_hubConnection is null){return;}
+        //Clear the monitor history.
+        _monitorHistory = new();
+        await _hubConnection.InvokeAsync("StartSubredditLoop", _selectedSubreddit);
     }
 
     private async Task StopMonitor()
     {
-        if (hubConnection is null){return;}
-        await hubConnection.InvokeAsync("StopSubredditLoop");
+        if (_hubConnection is null){return;}
+        await _hubConnection.InvokeAsync("StopSubredditLoop");
     }
 
 
