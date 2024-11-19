@@ -17,10 +17,10 @@ public interface IApiMonitor
 
     event EventHandler? LoopStarted; // Event triggered when the loop starts
     event EventHandler? LoopStopped; // Event triggered when the loop stops
-    event EventHandler<(int remainingRequests, int resetTimeSeconds, int loopCount)>? LoopCalled; // Event triggered when the loop calls the action delegate
+    event EventHandler<(int remainingRequests, int resetTimeSeconds, int loopCount,int usedRequests, int Delay)>? LoopCalled; // Event triggered when the loop calls the action delegate
 }
 
-public record LoopStats(bool IsRunning, DateTime? RunningSince, int LoopCount = 0);
+public record LoopStats(bool IsRunning, DateTime? RunningSince, int LoopCount = 0, int Remaining = 0, int Reset = 0, int Delay = 0);
 
 public class ApiMonitor : IApiMonitor
 {
@@ -39,7 +39,7 @@ public class ApiMonitor : IApiMonitor
 
     public event EventHandler? LoopStarted;
     public event EventHandler? LoopStopped;
-    public event EventHandler<(int remainingRequests, int resetTimeSeconds, int loopCount)>? LoopCalled;
+    public event EventHandler<(int remainingRequests, int resetTimeSeconds, int loopCount,int usedRequests, int Delay)>? LoopCalled;
 
     public DateTime? RunningSince
     {
@@ -129,12 +129,13 @@ public class ApiMonitor : IApiMonitor
                 try
                 {
                     _loopCount++;
+                    
                     _logger.LogDebug("Loop iteration {loopCount}", _loopCount);
 
                     var (calledRequests,remainingRequests, resetTimeSeconds) = await actionDelegate(_serviceProvider);
                     _rateLimiter.UpdateRateLimits(remainingRequests, resetTimeSeconds);
 
-                    LoopCalled?.Invoke(this, (remainingRequests, resetTimeSeconds, _loopCount));
+                    LoopCalled?.Invoke(this, (remainingRequests, resetTimeSeconds, _loopCount, calledRequests, _rateLimiter.CalculateEvenDelay()));
 
                     await _rateLimiter.ApplyEvenDelayAsync(cancellationToken);
                 }

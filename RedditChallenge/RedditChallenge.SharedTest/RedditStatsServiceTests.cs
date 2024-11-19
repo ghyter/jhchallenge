@@ -45,7 +45,7 @@ namespace RedditChallenge.Tests.Services;
 
             // Assert
             Assert.IsNotNull(stats);
-            Assert.AreEqual("author1", stats.TopAuthor);
+            Assert.AreEqual("author1", stats.TopAuthorByPosts);
             Assert.AreEqual("Post 3", stats.TopUpVotedPost?.Title);
             Assert.AreEqual(20, stats.TopUpVotedPost?.Ups);
         }

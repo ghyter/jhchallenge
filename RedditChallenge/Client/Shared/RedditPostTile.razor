@@ -1,0 +1,28 @@
+@using System.ComponentModel.DataAnnotations
+@using RedditChallenge.Shared.Model
+@if(RedditPost != null){
+<RadzenCard Style="width: 300px; margin: 10px; padding: 10px;">
+    <RadzenText TextStyle="TextStyle.H5">@Title</RadzenText>
+    <RadzenStack>
+        <RadzenText TextStyle="TextStyle.Overline">Title</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1">@RedditPost.Title</RadzenText>
+        <RadzenText TextStyle="TextStyle.Overline">Author</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1">@RedditPost.Author</RadzenText>
+        <RadzenText TextStyle="TextStyle.Overline">Upvotes</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1">@RedditPost.Ups</RadzenText>
+        <RadzenText TextStyle="TextStyle.Overline">Created</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1">@RedditPost.CreatedUtcDateTime.ToString("f")</RadzenText>
+    </RadzenStack>
+</RadzenCard>
+}
+@code {
+    [Parameter]
+    [Required]
+    public SubRedditPost? RedditPost {get;set;}
+
+    [Parameter]
+    [Required]
+    public string Title {get;set;} = "Post";
+
+
+}

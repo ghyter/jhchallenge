@@ -1,21 +1,127 @@
 ﻿@page "/"
-@inject HttpClient Http
+@using Microsoft.AspNetCore.SignalR.Client
+@using RedditChallenge.Shared.Model
+@using RedditChallenge.Shared.Services
+@using RedditChallenge.Client.Shared
+@inject NavigationManager Navigation
+
 <PageTitle>Reddit Challenge</PageTitle>
-
-<h1>SubReddit stats</h1>
-
-<RadzenStack Orientation="Orientation.Vertical">
-	<RadzenDropDown Data="@Subreddits" TValue="string" Placeholder="Select a Subreddit" Style="width: 300px" />
+<RadzenText TextStyle="TextStyle.H3">Reddit Statistics Challenge</RadzenText>
 
 
-</RadzenStack>
+<RadzenRow>
+    <RadzenColumn>
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="3">
+            <RadzenDropDown @bind-Value="selectedSubreddit" Data="@Subreddits" Disabled="@(monitorStatus == "Running")" TValue="string" Placeholder="Select a Subreddit" Style="width: 300px" />
+                <RadzenButton Click="StartMonitor" Disabled="@(selectedSubreddit==null || monitorStatus == "Running")">Start Monitor</RadzenButton>
+                <RadzenButton Click="StopMonitor" Disabled="@(monitorStatus != "Running")">Stop Monitor</RadzenButton>
+        </RadzenStack>
+    </RadzenColumn>
+    
+</RadzenRow>
+<RadzenRow>
+@if (redditStatistics != null){
+    <RadzenColumn>
+        <RedditPostTile 
+            Title="Top Post By UpVotes" 
+            RedditPost="@redditStatistics?.TopUpVotedPost"
+        />    
+    </RadzenColumn>
+    <RadzenColumn>
+        <RedditAuthorTile 
+            Title="Top Author By Posts" 
+            Author="@redditStatistics?.TopAuthorByPosts"
+            TotalLabel="Posts"
+            Total="@redditStatistics?.TopAuthorPostCount"
+        />
+    </RadzenColumn>
+    <RadzenColumn>
+        <RedditAuthorTile 
+            Title="Top Author By UpVotes" 
+            Author="@redditStatistics?.TopAuthorByUpVotes"
+            TotalLabel="UpVotes"
+            Total="@redditStatistics?.TopAuthorByUpVotesCount"
+        />
+
+    </RadzenColumn>
+}
+</RadzenRow>
+<RadzenRow>
+    <RadzenColumn>
+        @if (monitorMessage != null){
+            <ApiMonitorGauge Message="@monitorMessage"/>
+        }
+        <div>
+            <p>Status: @monitorStatus</p>
+            <p>Last Event: @lastEvent</p>
+        </div>
+    </RadzenColumn>
+</RadzenRow>
 
 
-@code{
+@code {
 
-	IEnumerable<string> Subreddits = new List<string> { "r/csharp", "r/programminghumor", "r/technology", "r/science", "r/askreddit" };
+	IEnumerable<string> Subreddits = new List<string> { "csharp", "programminghumor", "technology", "science", "askreddit","memes" };
 
+	private string? selectedSubreddit;
+    private HubConnection? hubConnection;
+    private string monitorStatus = "Stopped";
+    private int loopCount = 0;
+    private string lastEvent = "";
+
+    private int remainingRequests = 0;
+    private int resetInSeconds = 0;
+
+    private RedditStatistics? redditStatistics;
+
+    private MonitorStatsMessage? monitorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/subreddithub"))
+            .WithAutomaticReconnect(new[] { TimeSpan.Zero, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30) })
+            .Build();
+
+        hubConnection.On<MonitorStatsMessage>("ReceiveMonitorStats", (stats) =>
+        {
+            monitorMessage = stats;
+            monitorStatus = stats.IsRunning ? "Running" : "Stopped";
+            loopCount = stats.LoopCount;
+            remainingRequests = stats.Remaining;
+            resetInSeconds = stats.Reset;
+           
+            StateHasChanged();
+        });
+
+        hubConnection.On<MonitorSubredditStatsMessage>("ReceiveSubredditStats", (eventMessage) =>
+        {   
+            redditStatistics = eventMessage.stats;
+            StateHasChanged();
+        });
+        hubConnection.On<MonitorEventMessage>("ReceiveMonitorEvent", (eventMessage) =>
+        {
+            lastEvent = $"{eventMessage.Timestamp}: {eventMessage.Message}";
+            if (eventMessage.Message.Contains("[STOP]")){
+                monitorStatus = "Stopped";
+            }
+            StateHasChanged();
+        });
+
+        await hubConnection.StartAsync();
+    }
+
+    private async Task StartMonitor()
+    {
+        if (hubConnection is null){return;}
+        await hubConnection.InvokeAsync("StartSubredditLoop", selectedSubreddit);
+    }
+
+    private async Task StopMonitor()
+    {
+        if (hubConnection is null){return;}
+        await hubConnection.InvokeAsync("StopSubredditLoop");
+    }
 
 
 }
-

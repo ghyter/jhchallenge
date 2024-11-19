@@ -1,12 +1,15 @@
 using Microsoft.AspNetCore.ResponseCompression;
 using RedditChallenge.Shared.Repositories;
 using RedditChallenge.Shared.Services;
+using RedditChallenge.Server.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-//builder.Services.AddControllersWithViews();
+
+builder.Services.AddSignalR();
+
 builder.Services.AddRazorPages();
 
 builder.Services.AddHttpClient("RedditTokenClient",httpclient => {
@@ -15,6 +18,7 @@ builder.Services.AddHttpClient("RedditTokenClient",httpclient => {
 });
 
 builder.Services.AddSingleton<IRedditAuthRepository,RedditAuthRepository>();
+builder.Services.AddSingleton<BroadcastService>();
 builder.Services.AddSingleton<IRedditStatsService,RedditStatsService>();
 builder.Services.AddScoped<ISubredditRepository,SubredditRepository>();
 builder.Services.AddSingleton<IApiRateLimiter,ApiRateLimiter>();
@@ -110,8 +114,9 @@ api.MapGet("/subreddit/{subreddit}/stop", async (IApiMonitor monitor) =>
 
 
 app.MapRazorPages();
-//app.MapControllers();
 app.MapFallbackToFile("index.html");
+
+app.MapHub<SubredditHub>("/subreddithub");
 
 app.Run();
 

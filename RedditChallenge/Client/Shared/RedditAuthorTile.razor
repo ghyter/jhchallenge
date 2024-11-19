@@ -1,0 +1,29 @@
+﻿@using System.ComponentModel.DataAnnotations
+<RadzenCard Style="width: 300px; margin: 10px; padding: 10px;">
+    <RadzenText TextStyle="TextStyle.H5">@Title</RadzenText>
+    <RadzenStack>
+            <RadzenText TextStyle="TextStyle.Overline">Author</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body1">@Author</RadzenText>
+            <RadzenText TextStyle="TextStyle.Overline">@TotalLabel</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body1">@Total</RadzenText>
+    </RadzenStack>
+</RadzenCard>
+@code {
+
+    [Parameter]
+    [Required]
+    public string? Title {get;set;} = "Authors";
+
+    [Parameter]
+    [Required]
+    public string? Author {get;set;}
+
+    [Parameter]
+    [Required]
+    public string? TotalLabel {get;set;}
+
+    [Parameter]
+    [Required]
+    public int? Total {get;set;}
+
+}

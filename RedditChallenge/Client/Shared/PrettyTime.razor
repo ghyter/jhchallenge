@@ -1,0 +1,49 @@
+﻿@using System.ComponentModel.DataAnnotations;
+<span @attributes="@AdditionalAttributes">@FormatTime()</span>
+
+@code {
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    [Parameter]
+    public int? TimeInMilliseconds { get; set; }
+
+    [Parameter]
+    public int? TimeInSeconds { get; set; }
+
+    private string FormatTime()
+    {
+        if (TimeInMilliseconds != null)
+        {
+            double timeInSeconds = TimeInMilliseconds.Value / 1000.0;
+
+            // Format for milliseconds to seconds
+            if (TimeInMilliseconds > 500 && TimeInMilliseconds < 1000)
+                return $"{timeInSeconds:F2} seconds";
+            if (TimeInMilliseconds >= 1000 && TimeInMilliseconds < 60000)
+                return $"{timeInSeconds:F2} seconds";
+
+            // Format for milliseconds to minutes
+            if (TimeInMilliseconds >= 60000)
+            {
+                double timeInMinutes = TimeInMilliseconds.Value / 60000.0;
+                return $"{timeInMinutes:F2} minutes";
+            }
+
+            return $"{TimeInMilliseconds} ms";
+        }
+
+        if (TimeInSeconds != null)
+        {
+            // Format for seconds to minutes
+            if (TimeInSeconds > 30 && TimeInSeconds < 60)
+                return $"{TimeInSeconds / 60.0:F2} minutes";
+            if (TimeInSeconds >= 60 && TimeInSeconds < 3600)
+                return $"{TimeInSeconds / 60.0:F2} minutes";
+
+            return $"{TimeInSeconds} seconds";
+        }
+
+        return "Invalid selection";
+    }
+}

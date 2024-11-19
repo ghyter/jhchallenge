@@ -1,0 +1,15 @@
+@using System.ComponentModel.DataAnnotations
+@using RedditChallenge.Shared.Model
+
+@if (message != null){
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="10">
+        
+
+    </RadzenStack>
+}
+@code{
+    [Parameter]
+    [Required]
+    public MonitorStatsMessage? message {get;set;}
+
+}

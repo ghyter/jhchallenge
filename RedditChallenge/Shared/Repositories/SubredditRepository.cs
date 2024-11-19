@@ -37,7 +37,7 @@ public class SubredditRepository:ISubredditRepository
     public async Task<RedditRootResponse<SubredditResponse>?> GetSubreddit(string subreddit)
     {
         var token = await _authRepository.GetAuthToken();
-        var request = new HttpRequestMessage(HttpMethod.Get, $"https://oath.reddit.com/r/{subreddit}/new.json");
+        var request = new HttpRequestMessage(HttpMethod.Get, $"https://oath.reddit.com/r/{subreddit}/new.json?limit=100");
         
         request.Headers.UserAgent.ParseAdd("RedditChallenge/1.0 (by /u/Dependent-Bar-8662)");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer",token);
