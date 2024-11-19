@@ -1,9 +1,6 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using RedditChallenge.Shared.Services;
-using System;
-using System.Threading.Tasks;
 
 namespace RedditChallenge.SharedTest;
 

@@ -132,3 +132,25 @@ The shared project is organized as follows:
 This is a MS Test project that will run against the Shared Library for unit testing.
 
 
+
+## Methodology
+
+This was written primarily in VSCode.  I have made good use of my friend ChatGPT assistance.  As ChaGTP is much like having a junior dev who can type really fast, the direction/architecture and techniques are mine.
+
+This was primarily developed on an old Ubuntu laptop with way less RAM than I am used to having.
+
+## Future steps
+
+### Database
+
+Given that this application tracks current statistics, storing the data ongoing may not make that much sense.  However, it would be nice to allow for CRUD around the list of subreddits.  If I wanted long term trends on a subreddit, I could store the events in the database as they come in.
+
+I typically use Dapper to access the database.  I am generally distrustfull of ORMs, and I have seen where they can cause performance nightmares.  However, in this case Entity Framework may be fine, since there are not a lot of relationships, and an ORM is fine with straight CRUD operations.
+
+### Multiple Subreddits
+
+The API Montior is currently a singleton, however it could just as easily be moved down a level.  I would probably create a new singleton at the top which would manage a Dictionary<string,ApiMonitor>.  The events would all need to be namespaced so they could be routed appropriately.  The ApiRateLiiter server may require some adjustment to account for mulitple loops using the same rate pool.
+
+### Investigations
+
+I have noticed that while the application runs, the number of of Used requests drops well before the timeout.  I added the line graph in order to be able to watch this.  I have observed this nearly every time I run the application.  The Used/Remaining/Reset does not appear to be completely accurate.

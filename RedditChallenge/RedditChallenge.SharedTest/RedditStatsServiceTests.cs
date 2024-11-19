@@ -1,15 +1,11 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Extensions.Logging;
 using Moq;
 using RedditChallenge.Shared.Model;
 using RedditChallenge.Shared.Services;
-using RedditChallenge.Shared.Repositories;
-using System;
-using System.Collections.Generic;
 
 namespace RedditChallenge.Tests.Services;
 
-    [TestClass]
+[TestClass]
     public class RedditStatsServiceTests
     {
         private Mock<ILogger<RedditStatsService>> _mockLogger = null!;

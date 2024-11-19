@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.ResponseCompression;
 using RedditChallenge.Shared.Repositories;
 using RedditChallenge.Shared.Services;
 using RedditChallenge.Server.Hubs;

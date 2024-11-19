@@ -26,27 +26,27 @@
   
 </RadzenRow>
 <RadzenRow>
-@if (redditStatistics != null){
+@if (_redditStatistics != null){
     <RadzenColumn>
         <RedditPostTile 
             Title="Top Post By UpVotes" 
-            RedditPost="@redditStatistics?.TopUpVotedPost"
+            RedditPost="@_redditStatistics?.TopUpVotedPost"
         />    
     </RadzenColumn>
     <RadzenColumn>
         <RedditAuthorTile 
             Title="Top Author By Posts" 
-            Author="@redditStatistics?.TopAuthorByPosts"
+            Author="@_redditStatistics?.TopAuthorByPosts"
             TotalLabel="Posts"
-            Total="@redditStatistics?.TopAuthorPostCount"
+            Total="@_redditStatistics?.TopAuthorPostCount"
         />
     </RadzenColumn>
     <RadzenColumn>
         <RedditAuthorTile 
             Title="Top Author By UpVotes" 
-            Author="@redditStatistics?.TopAuthorByUpVotes"
+            Author="@_redditStatistics?.TopAuthorByUpVotes"
             TotalLabel="UpVotes"
-            Total="@redditStatistics?.TopAuthorByUpVotesCount"
+            Total="@_redditStatistics?.TopAuthorByUpVotesCount"
         />
 
     </RadzenColumn>
@@ -75,7 +75,7 @@
     private string _monitorStatus = "Stopped";
     private string _lastEvent = "";
 
-    private RedditStatistics? redditStatistics;
+    private RedditStatistics? _redditStatistics;
 
     private List<MonitorStatsMessage> _monitorHistory = new();
 
@@ -97,7 +97,7 @@
 
         _hubConnection.On<MonitorSubredditStatsMessage>("ReceiveSubredditStats", (eventMessage) =>
         {   
-            redditStatistics = eventMessage.stats;
+            _redditStatistics = eventMessage.stats;
             StateHasChanged();
         });
         _hubConnection.On<MonitorEventMessage>("ReceiveMonitorEvent", (eventMessage) =>
